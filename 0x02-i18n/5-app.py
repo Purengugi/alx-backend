@@ -1,19 +1,13 @@
 #!/usr/bin/env python3
-"""basic flask setup"""
+"""
+This is the main file of the flask application.
+"""
 from flask import Flask, render_template, request, g
-from flask_babel import Babel, _
-
-
-class Config(object):
-    LANGUAGES = ["en", "fr"]
-    BABEL_DEFAULT_LOCALE = "en"
-    BABEL_DEFAULT_TIMEZONE = "UTC"
-
+from flask_babel import Babel
+from typing import Union
 
 app = Flask(__name__)
-app.config.from_object(Config)
 babel = Babel(app)
-
 
 users = {
     1: {"name": "Balou", "locale": "fr", "timezone": "Europe/Paris"},
@@ -23,36 +17,66 @@ users = {
 }
 
 
-def get_user(user_id):
-    """returns user dict based on id provided"""
-    return users.get(user_id)
+class Config(object):
+    """
+    This class is used to configure the application.
+    """
+    LANGUAGES = ["en", "fr"]
+    BABEL_DEFAULT_LOCALE = "en"
+    BABEL_DEFAULT_TIMEZONE = "UTC"
 
 
-@app.before_request
-def before_request():
-    """Executed before all other functions"""
-    user_id = request.args.get('login_as')
-    user = get_user(int(user_id)) if user_id else None
-    g.user = user
+app.config.from_object(Config)
 
 
 @babel.localeselector
-def get_locale():
-    """determine the best match with our supported languages"""
-    user_locale = request.args.get('locale')
-    if user_locale and user_locale in app.config['LANGUAGES']:
-        return user_locale
+def get_locale() -> str:
+    """
+    This function is used to select the language.
+
+    Returns:
+        str: The language.
+    """
+    locale = request.args.get('locale')
+    if locale:
+        if locale in app.config['LANGUAGES']:
+            return locale
     return request.accept_languages.best_match(app.config['LANGUAGES'])
 
 
-@app.route('/')
-def index():
-    """displays a simple index with some text"""
-    greeting = _('home_header')
-    heading = _('home_title')
-    return render_template('5-index.html', greeting=greeting,
-                           heading=heading, users=users)
+@app.route('/', methods=['GET'], strict_slashes=False)
+def index() -> str:
+    """
+    This is the main page of the flask application.
+
+    Returns:
+        str: The rendered template.
+    """
+    return render_template('5-index.html')
+
+
+def get_user() -> Union[dict, None]:
+    """
+    This function is used to get the user.
+    Returns:
+        dict: The user.
+    """
+    login_as = request.args.get('login_as')
+    if login_as and login_as.isdigit():
+        return users.get(int(login_as), None)
+    return None
+
+
+@app.before_request
+def before_request() -> None:
+    """
+    This function is used to set the user.
+
+    Returns:
+        None
+    """
+    g.user = get_user()
 
 
 if __name__ == '__main__':
-    app.run(port="5000", host="0.0.0.0", debug=True)
+    app.run(host='0.0.0.0', port=5000)
